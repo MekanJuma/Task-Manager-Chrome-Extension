@@ -85,3 +85,10 @@ The extension is built using vanilla JavaScript and uses Chrome's storage API fo
 - Status-based filtering in reports
 - Group-wise task analysis
 - Real-time metrics updates
+
+## Author
+
+**Mekan Jumayev**
+- GitHub: [MekanJuma](https://github.com/MekanJuma)
+- LinkedIn: [Mekan Jumayev](https://www.linkedin.com/in/mekanjuma)
+- Instagram: [Mekan Jumayev](https://www.instagram.com/jumaevmekan)
