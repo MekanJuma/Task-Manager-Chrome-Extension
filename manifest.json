@@ -16,5 +16,12 @@
     "16": "icons/logo16.png",
     "48": "icons/logo48.png",
     "128": "icons/logo128.png"
+  },
+  "web_accessible_resources": [{
+    "resources": ["js/chart.js"],
+    "matches": ["<all_urls>"]
+  }],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 } 
