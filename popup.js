@@ -6,6 +6,7 @@ let draggedTask = null;
 let draggedElement = null;
 let currentSort = { field: 'createdDate', direction: 'desc' };
 let donutChart = null;
+let currentTags = new Set();
 
 // DOM Elements
 const addTaskBtn = document.getElementById('addTaskBtn');
@@ -23,12 +24,15 @@ const sortBtn = document.getElementById('sortBtn');
 const sortDropdown = document.getElementById('sortDropdown');
 const metricsModal = document.getElementById('metricsModal');
 const closeMetricsModalBtn = document.getElementById('closeMetricsModalBtn');
+const tagsContainer = document.getElementById('tagsContainer');
+const taskTagsInput = document.getElementById('taskTags');
 
 // Initialize the extension
 document.addEventListener('DOMContentLoaded', async () => {
     await loadTasks();
     await loadGroups();
     await loadThemePreference();
+    await loadTags();
     // Set default sort
     currentSort = { field: 'createdDate', direction: 'desc' };
     setupSortDropdown();
@@ -74,6 +78,10 @@ function setupEventListeners() {
     document.getElementById('chartStatusFilter').addEventListener('change', (e) => {
         updateDonutChart(e.target.value);
     });
+
+    // Tags input
+    taskTagsInput.addEventListener('keydown', handleTagInput);
+    tagsContainer.addEventListener('click', handleTagRemoval);
 }
 
 // Theme Management
@@ -385,6 +393,23 @@ function showModal(task = null, viewMode = false) {
             <div class="description-content">${task.description || 'No description provided'}</div>
         `;
         
+        // Add tags section to view mode
+        const tagsSection = document.createElement('div');
+        tagsSection.className = 'task-tags';
+        if (task.tags && task.tags.length > 0) {
+            tagsSection.innerHTML = `
+                <h3>Tags</h3>
+                <div class="tags-list">
+                    ${task.tags.map(tag => `
+                        <span class="tag-pill">
+                            <span class="tag-text">${tag}</span>
+                        </span>
+                    `).join('')}
+                </div>
+            `;
+            viewContent.appendChild(tagsSection);
+        }
+        
         // Assemble the view content
         viewContent.appendChild(metaSection);
         viewContent.appendChild(descriptionSection);
@@ -430,10 +455,12 @@ function showModal(task = null, viewMode = false) {
             document.getElementById('taskDescription').value = task.description;
             document.getElementById('taskGroup').value = task.group;
             taskForm.dataset.taskId = task.id;
+            renderTags(new Set(task.tags || []));
         } else {
             document.getElementById('modalTitle').textContent = 'New Task';
             taskForm.reset();
             delete taskForm.dataset.taskId;
+            renderTags(new Set());
         }
     }
 }
@@ -462,6 +489,10 @@ async function handleTaskSubmit(e) {
     const taskId = taskForm.dataset.taskId;
     const group = document.getElementById('taskGroup').value;
     const newStatus = document.getElementById('taskStatus').value;
+    
+    // Get tags from the tags container
+    const taskTags = Array.from(tagsContainer.querySelectorAll('.tag-pill'))
+        .map(pill => pill.getAttribute('data-tag'));
     
     // Get the highest order number for the group
     const groupTasks = tasks.filter(t => t.group === group && t.status === currentStatus);
@@ -497,6 +528,7 @@ async function handleTaskSubmit(e) {
         status: newStatus,
         description: document.getElementById('taskDescription').value,
         group: group,
+        tags: taskTags,
         createdDate: taskId ? tasks.find(t => t.id === taskId).createdDate : new Date().toISOString(),
         completionDate: completionDate,
         order: taskId ? tasks.find(t => t.id === taskId).order : maxOrder + 1
@@ -689,7 +721,8 @@ function renderTasks(searchTerm = '') {
             return (
                 task.title.toLowerCase().includes(searchTerm) ||
                 task.description.toLowerCase().includes(searchTerm) ||
-                task.group.toLowerCase().includes(searchTerm)
+                task.group.toLowerCase().includes(searchTerm) ||
+                (task.tags && task.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
             );
         });
 
@@ -776,6 +809,14 @@ function renderTasks(searchTerm = '') {
             taskCard.className = 'task-card';
             taskCard.setAttribute('data-task-id', task.id);
             
+            const tagsHtml = task.tags && task.tags.length > 0
+                ? `<div class="task-tags">${task.tags.map(tag => `
+                    <span class="tag-pill">
+                        <span class="tag-text">${tag}</span>
+                    </span>
+                `).join('')}</div>`
+                : '';
+            
             // Create completion time element if task is completed
             const completionInfo = task.status === 'Completed' && task.completionDate
                 ? `<div class="completion-info">Completed in: ${formatTimeSpent(task.createdDate, task.completionDate)}</div>`
@@ -787,6 +828,7 @@ function renderTasks(searchTerm = '') {
                     <span class="task-status status-${task.status.toLowerCase().replace(' ', '-')}">${task.status}</span>
                 </div>
                 <div class="task-description">${task.description || ''}</div>
+                ${tagsHtml}
                 ${completionInfo}
                 <div class="task-meta">
                     <span>Created ${formatDate(task.createdDate)}</span>
@@ -872,4 +914,66 @@ function formatTimeSpent(startDate, endDate) {
     if (minutes > 0) timeSpent += `${minutes}m`;
     
     return timeSpent.trim() || '< 1m';
+}
+
+// Tags Management
+async function loadTags() {
+    const result = await chrome.storage.local.get('tags');
+    currentTags = new Set(result.tags || []);
+}
+
+async function saveTags() {
+    await chrome.storage.local.set({ tags: Array.from(currentTags) });
+}
+
+function handleTagInput(e) {
+    if (e.key === 'Enter' && e.target.value.trim()) {
+        e.preventDefault();
+        const tag = e.target.value.trim().toLowerCase();
+        addTag(tag);
+        e.target.value = '';
+    }
+}
+
+function handleTagRemoval(e) {
+    const removeBtn = e.target.closest('.remove-tag');
+    if (removeBtn) {
+        const tagElement = removeBtn.closest('.tag-pill');
+        const tag = tagElement.getAttribute('data-tag');
+        removeTag(tag);
+    }
+}
+
+function getTaskTagsFromForm() {
+    // Always get tags from the DOM for both new and existing tasks
+    return new Set(Array.from(tagsContainer.querySelectorAll('.tag-pill')).map(pill => pill.getAttribute('data-tag')));
+}
+
+function addTag(tag) {
+    const taskTags = getTaskTagsFromForm();
+    if (!taskTags.has(tag)) {
+        taskTags.add(tag);
+        currentTags.add(tag);
+        renderTags(taskTags);
+        saveTags();
+    }
+}
+
+function removeTag(tag) {
+    const taskTags = getTaskTagsFromForm();
+    taskTags.delete(tag);
+    renderTags(taskTags);
+}
+
+function renderTags(tags) {
+    tagsContainer.innerHTML = Array.from(tags).map(tag => `
+        <span class="tag-pill" data-tag="${tag}">
+            ${tag}
+            <span class="remove-tag">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </span>
+        </span>
+    `).join('');
 } 
