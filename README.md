@@ -7,6 +7,7 @@ A Chrome extension for managing tasks with a clean and intuitive interface.
 - Create, edit, and delete tasks
 - Organize tasks by groups
 - Track task status (Active/Completed/On Hold)
+- Tag tasks with custom labels
 - Drag and drop reordering within groups
 - Beautiful and responsive UI
 - Local storage for data persistence
@@ -38,14 +39,16 @@ git clone https://github.com/MekanJuma/Task-Manager-Chrome-Extension.git
 1. Click the extension icon to open the task manager
 2. Use the "New Task" button to create new tasks
 3. Organize tasks into groups
-4. Drag and drop tasks to reorder them
-5. Click on a task title to view details
-6. Use the edit and delete buttons to manage tasks
-7. Switch between Active, Completed, and On Hold tasks using the tabs
-8. Use the search bar to filter tasks (with smart debouncing)
-9. Sort tasks using the sort dropdown
-10. Toggle between light and dark themes
-11. View task analytics in the report section
+4. Add tags by typing and pressing Enter
+5. Remove tags using the × button
+6. Drag and drop tasks to reorder them
+7. Click on a task title to view details
+8. Use the edit and delete buttons to manage tasks
+9. Switch between Active, Completed, and On Hold tasks using the tabs
+10. Use the search bar to filter tasks (with smart debouncing)
+11. Sort tasks using the sort dropdown
+12. Toggle between light and dark themes
+13. View task analytics in the report section
 
 ## Development
 
@@ -62,7 +65,7 @@ The extension is built using vanilla JavaScript and uses Chrome's storage API fo
 
 #### Search
 - Implements debounced search functionality (300ms delay)
-- Searches across task titles, descriptions, and groups
+- Searches across task titles, descriptions, groups, and tags
 
 #### Sorting
 - Supports sorting by multiple fields:
@@ -79,6 +82,16 @@ The extension is built using vanilla JavaScript and uses Chrome's storage API fo
 - Records completion time for tasks
 - Calculates and displays time spent on completed tasks
 - Supports task status changes with time tracking
+
+#### Tagging System
+- Add multiple tags to tasks
+- Real-time tag addition with Enter key
+- Interactive tag removal with × button
+- Tag pills with modern design
+- Tags visible in task cards and detailed view
+- Tags included in search functionality
+- Persistent tag storage
+- Cross-task tag consistency
 
 #### Reporting System
 - Interactive donut chart for task distribution
