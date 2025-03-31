@@ -48,6 +48,32 @@ function setupEventListeners() {
     closeModalBtn.addEventListener('click', () => hideModal());
     taskForm.addEventListener('submit', handleTaskSubmit);
     
+    // Add status change listener
+    document.getElementById('taskStatus').addEventListener('change', (e) => {
+        const completionHoursGroup = document.getElementById('completionHoursGroup');
+        if (completionHoursGroup) {
+            completionHoursGroup.style.display = e.target.value === 'Completed' ? 'block' : 'none';
+        }
+    });
+    
+    // Add completion hours input handler
+    const completionHoursInput = document.getElementById('completionHours');
+    completionHoursInput.addEventListener('input', (e) => {
+        let value = e.target.value;
+        
+        // Replace comma with dot for decimal
+        value = value.replace(',', '.');
+        
+        // Ensure only valid decimal numbers
+        if (value && !isNaN(value)) {
+            // Round to nearest 0.5
+            const rounded = Math.round(parseFloat(value) * 2) / 2;
+            if (rounded !== parseFloat(value)) {
+                e.target.value = rounded;
+            }
+        }
+    });
+    
     tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             currentStatus = btn.dataset.status;
@@ -454,12 +480,15 @@ function showModal(task = null, viewMode = false) {
             document.getElementById('taskStatus').value = task.status;
             document.getElementById('taskDescription').value = task.description;
             document.getElementById('taskGroup').value = task.group;
+            document.getElementById('completionHours').value = task.completionHours || '';
+            document.getElementById('completionHoursGroup').style.display = task.status === 'Completed' ? 'block' : 'none';
             taskForm.dataset.taskId = task.id;
             renderTags(new Set(task.tags || []));
         } else {
             document.getElementById('modalTitle').textContent = 'New Task';
             taskForm.reset();
             delete taskForm.dataset.taskId;
+            document.getElementById('completionHoursGroup').style.display = 'none';
             renderTags(new Set());
         }
     }
@@ -501,25 +530,11 @@ async function handleTaskSubmit(e) {
         : 0;
 
     let completionDate = null;
+    let completionHours = null;
     
-    if (taskId) {
-        // For existing task, check status change
-        const existingTask = tasks.find(t => t.id === taskId);
-        if (existingTask) {
-            if (newStatus === 'Completed' && existingTask.status !== 'Completed') {
-                // Task is being marked as completed
-                completionDate = new Date().toISOString();
-            } else if (newStatus !== 'Completed' && existingTask.status === 'Completed') {
-                // Task is being unmarked as completed
-                completionDate = null;
-            } else {
-                // Status didn't change or not related to completion
-                completionDate = existingTask.completionDate;
-            }
-        }
-    } else if (newStatus === 'Completed') {
-        // New task being created as completed
+    if (newStatus === 'Completed') {
         completionDate = new Date().toISOString();
+        completionHours = parseFloat(document.getElementById('completionHours').value) || 0;
     }
     
     const taskData = {
@@ -531,6 +546,7 @@ async function handleTaskSubmit(e) {
         tags: taskTags,
         createdDate: taskId ? tasks.find(t => t.id === taskId).createdDate : new Date().toISOString(),
         completionDate: completionDate,
+        completionHours: completionHours,
         order: taskId ? tasks.find(t => t.id === taskId).order : maxOrder + 1
     };
 
@@ -818,8 +834,8 @@ function renderTasks(searchTerm = '') {
                 : '';
             
             // Create completion time element if task is completed
-            const completionInfo = task.status === 'Completed' && task.completionDate
-                ? `<div class="completion-info">Completed in: ${formatTimeSpent(task.createdDate, task.completionDate)}</div>`
+            const completionInfo = task.status === 'Completed'
+                ? `<div class="completion-info">Completed in: ${formatCompletionTime(task.completionHours)}</div>`
                 : '';
             
             taskCard.innerHTML = `
@@ -914,6 +930,22 @@ function formatTimeSpent(startDate, endDate) {
     if (minutes > 0) timeSpent += `${minutes}m`;
     
     return timeSpent.trim() || '< 1m';
+}
+
+// Add this new function to format completion time
+function formatCompletionTime(hours) {
+    if (!hours && hours !== 0) return '0 hours';
+    
+    const fullHours = Math.floor(hours);
+    const minutes = Math.round((hours - fullHours) * 60);
+    
+    if (fullHours === 0) {
+        return `${minutes} minutes`;
+    } else if (minutes === 0) {
+        return `${fullHours} ${fullHours === 1 ? 'hour' : 'hours'}`;
+    } else {
+        return `${fullHours} ${fullHours === 1 ? 'hour' : 'hours'} ${minutes} minutes`;
+    }
 }
 
 // Tags Management

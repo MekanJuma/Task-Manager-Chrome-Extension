@@ -85,6 +85,16 @@
                         <option value="Completed">Completed</option>
                     </select>
                 </div>
+                <div class="form-group" id="completionHoursGroup" style="display: none;">
+                    <label for="completionHours">Completion Hours</label>
+                    <input type="number" 
+                           id="completionHours" 
+                           min="0" 
+                           max="999.5" 
+                           step="0.5" 
+                           placeholder="Enter hours (e.g. 1.5 for 1h 30m)"
+                           pattern="[0-9]*[.,]?[0-9]*">
+                </div>
                 <div class="form-group">
                     <label for="taskDescription">Description</label>
                     <textarea id="taskDescription" rows="3"></textarea>
